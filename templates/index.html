@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Focos de Incêndio</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 600px;
+            width: 100%;
+        }
+        body {
+            font-family: Arial, sans-serif;
+        }
+        h1 {
+            text-align: center;
+            margin-top: 20px;
+        }
+        form {
+            margin: 20px;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px;
+            background-color: green;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Mapa de Focos de Incêndio</h1>
+
+    <!-- Formulário para cadastrar novo foco -->
+    <form id="foco-form">
+        <input type="text" id="endereco" placeholder="Endereço" required>
+        <input type="number" step="any" id="latitude" placeholder="Latitude" required>
+        <input type="number" step="any" id="longitude" placeholder="Longitude" required>
+        <textarea id="descricao" placeholder="Descrição do foco"></textarea>
+        <button type="submit">Cadastrar Foco</button>
+    </form>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+    <script>
+        // Inicializando o mapa
+        var map = L.map('map').setView([-15.8267, -47.9218], 4); // Centro do mapa: Brasil
+
+        // Adicionando o tile layer do mapa
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: 'Map data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Função para buscar os focos de incêndio
+        function carregarFocos() {
+            fetch('/api/get_focos')
+            .then(response => response.json())
+            .then(data => {
+                data.focos.forEach(foco => {
+                    L.marker([foco.latitude, foco.longitude])
+                        .addTo(map)
+                        .bindPopup(`<b>Endereço:</b> ${foco.endereco}<br><b>Descrição:</b> ${foco.descricao}`);
+                });
+            })
+            .catch(error => console.error('Erro ao carregar os focos:', error));
+        }
+
+        // Carregar focos ao iniciar
+        carregarFocos();
+
+        // Função para cadastrar novo foco de incêndio
+        document.getElementById('foco-form').addEventListener('submit', function(event) {
+            event.preventDefault(); // Evita o recarregamento da página
+
+            let focoData = {
+                endereco: document.getElementById('endereco').value,
+                latitude: parseFloat(document.getElementById('latitude').value),
+                longitude: parseFloat(document.getElementById('longitude').value),
+                descricao: document.getElementById('descricao').value
+            };
+
+            fetch('/api/cadastrar_foco', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(focoData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Foco cadastrado com sucesso!');
+                    // Limpar o formulário
+                    document.getElementById('foco-form').reset();
+                    // Recarregar os focos no mapa
+                    carregarFocos();
+                } else {
+                    alert('Erro ao cadastrar o foco.');
+                }
+            })
+            .catch(error => console.error('Erro ao cadastrar o foco:', error));
+        });
+    </script>
+
+</body>
+</html>
